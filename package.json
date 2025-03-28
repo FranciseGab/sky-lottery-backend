@@ -1,0 +1,19 @@
+{
+  "name": "machoterry",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+  "start": "concurrently \"cross-env PORT=3000 node server/server.js\" \"cross-env PORT=3001 node server/server.js\" \"cross-env PORT=3002 node server/server.js\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
