@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="..\style\game.css">
+    <link rel="stylesheet" href="../style/game.css">
     <link href="https://fonts.googleapis.com/css2?family=K2D:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <title>Document</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <title>Game-Machottery</title>
 </head>
 <body>
     <div class="container-bg">
-        <img src="..\assets\background-img.jpg">
+        <img src="../assets/background-img.jpg" alt="Background">
         <div class="box-container">
             <h1 id="price-info">
-                <img src="..\assets\logo-img.png">
+                <img src="../assets/logo-img.png" alt="Logo">
                 <p>₱1,000.00</p>
             </h1>
             <div class="num">
@@ -25,37 +26,140 @@
                 <input id="inp-num-6" type="number">
             </div>
             <div class="bet-part">
-                <input id="bet-input" type="number">
-                <a href="#bet-box" class="bet-btn">
-                <p>BET</p>
-            </a>
+                <input id="bet-input" type="number" min="1" max="10000" placeholder="Enter bet amount">
+                <a href="#" class="bet-btn">
+                    <p>BET</p>
+                </a>
             </div>
             <div class="outside">
                 <p class="time">00:00</p>
             </div>
             <div class="line"></div>
-            <div class="circle-1">20</div>
-            <div class="circle-2">20</div>
-            <div class="circle-3">20</div>
-            <div class="circle-4">20</div>
-            <div class="circle-5">20</div>
-            <div class="circle-6">20</div>
+            <div class="circle-1">--</div>
+            <div class="circle-2">--</div>
+            <div class="circle-3">--</div>
+            <div class="circle-4">--</div>
+            <div class="circle-5">--</div>
+            <div class="circle-6">--</div>
 
             <div class="bet-area">
-                <dic class="pot-money">
-                <p class="pot-name">POT MONEY</p>
+                <div class="pot-money">
+                    <p class="pot-name">POT MONEY</p>
+                    <div class="money1">
+                        <p>₱0.00</p>
+                    </div>
+                    <div class="money2">
+                        <p>₱0.00</p>
+                    </div>
+                    <div class="money3">
+                        <p>₱0.00</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    
     <h1 class="header-icons">
         <a href="home.html"><i class="fa-solid fa-house-chimney nav-icon-1"></i></a>
         <a href="history.html"><i class="fa-solid fa-medal nav-icon-2"></i></a>
         <a href="profile.html"><i class="fa-solid fa-user nav-icon-3"></i></a>
     </h1>
+
     <footer class="footer-icons">
         <a href="home.html"><i class="fa-solid fa-house-chimney nav-icon"></i></a>
         <a href="history.html"><i class="fa-solid fa-medal nav-icon"></i></a>
         <a href="profile.html"><i class="fa-solid fa-user nav-icon"></i></a>
     </footer>    
+
+    <script>
+        const subServerPorts = [3001, 3002];
+        const randomPort = subServerPorts[Math.floor(Math.random() * subServerPorts.length)];
+        const socket = io(`http://localhost:${randomPort}`);
+
+        const betInput = document.getElementById("bet-input");
+        const betBtn = document.querySelector(".bet-btn");
+        const timeDisplay = document.querySelector(".time");
+        const potMoneyDisplays = document.querySelectorAll(".pot-money div p");
+        const circles = document.querySelectorAll(".circle-1, .circle-2, .circle-3, .circle-4, .circle-5, .circle-6");
+        const inputNums = document.querySelectorAll("#inp-num-1, #inp-num-2, #inp-num-3, #inp-num-4, #inp-num-5, #inp-num-6");
+
+        let userNumbers = [];
+
+        inputNums.forEach((input, index) => {
+        input.addEventListener("input", (e) => {
+            userNumbers[index] = parseInt(e.target.value, 10);
+        });
+        });
+
+        
+        socket.on("updateTimer", (timer) => {
+        if (timer === 0) {
+            socket.emit("updateUserInput", { userNumbers });
+        }
+        });
+
+        
+        socket.on("userResult", (data) => {
+        const message = data.message;
+        alert(message); 
+        });
+
+        socket.on("updateWinningNumbers", (data) => {
+            if (data === null) {
+                circles.forEach((circle) => {
+                    circle.textContent = "--";
+                    circle.style.color = "white"; 
+                });
+            } else {
+                data.forEach((num, index) => {
+                    circles[index].textContent = num;
+                    circles[index].style.color = "white"; 
+                });
+            }
+        });
+
+        socket.on("updateTimer", (data) => {
+            timeDisplay.textContent = formatTime(data);
+            disableBetting(data === 0);
+        });
+
+        socket.on("updatePotMoney", (data) => {
+            console.log("UI Update - Pot Money:", data); 
+            if (Array.isArray(data)) {
+                potMoneyDisplays.forEach((element, index) => {
+                    element.innerText = `₱${data[index] || 0}`;
+                });
+            } else {
+                console.error("Invalid pot money data received:", data);
+            }
+        });
+
+        betBtn.addEventListener("click", () => {
+            const betAmount = parseInt(betInput.value, 10);
+
+            if (isNaN(betAmount) || betAmount <= 0) {
+                alert("Invalid bet! Please enter a valid amount.");
+                betInput.value = "";
+                return;
+            }
+
+            socket.emit("placeBet", { betAmount, userId: socket.id }); 
+            betInput.value = ""; 
+        });
+
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+        }
+
+        function disableBetting(status) {
+            betBtn.style.pointerEvents = status ? "none" : "auto";
+            betBtn.style.opacity = status ? "0.5" : "1";
+            betInput.disabled = status;
+        }
+
+    </script>      
 </body>
 </html>
